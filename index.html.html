@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lista de compras</title>
+<style>
+  :root {
+    --bg: #f5f4ef;
+    --card: #ffffff;
+    --ink: #1c1c1a;
+    --muted: #7a7a72;
+    --line: #e5e3db;
+    --accent: #1d9e75;
+    --accent-dark: #0f6e56;
+    --up: #d85a30;
+    --down: #1d9e75;
+    --skip: #b4b2a9;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.4;
+    padding-bottom: 90px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 14px 8px;
+  }
+  h1 { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
+  .month-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .month-bar select, .month-bar button {
+    font-size: 15px; font-family: inherit;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 8px 10px; color: var(--ink);
+  }
+  .month-bar select { flex: 1; font-weight: 600; }
+  .month-bar button { font-weight: 600; }
+  .search { width: 100%; font-size: 16px; font-family: inherit;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 10px 12px; color: var(--ink); }
+  .toolbar { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .chip {
+    font-size: 13px; font-weight: 600; padding: 6px 11px;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 20px; color: var(--muted);
+  }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .summary { padding: 10px 14px; font-size: 14px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 12px; }
+  .summary b { color: var(--ink); }
+  main { padding: 0 10px; }
+  .section-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted);
+    padding: 16px 6px 6px; display: flex; align-items: center; gap: 6px;
+  }
+  .item {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); margin-bottom: 8px; overflow: hidden;
+  }
+  .item.checked { background: #eef7f2; border-color: #cbe8dc; }
+  .item.skipped { opacity: .55; }
+  .item-main { display: flex; align-items: center; gap: 10px; padding: 12px; }
+  .check {
+    width: 26px; height: 26px; min-width: 26px; border-radius: 7px;
+    border: 2px solid var(--line); display: flex; align-items: center;
+    justify-content: center; background: #fff; font-size: 16px; color: #fff;
+  }
+  .item.checked .check { background: var(--accent); border-color: var(--accent); }
+  .name-wrap { flex: 1; min-width: 0; }
+  .name { font-size: 16px; font-weight: 500; }
+  .item.skipped .name { text-decoration: line-through; }
+  .desc-preview { font-size: 13px; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price-tag { font-size: 15px; font-weight: 600; text-align: right; min-width: 62px; }
+  .price-tag .none { color: var(--line); font-weight: 400; }
+  .delta { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .delta.up { color: var(--up); }
+  .delta.down { color: var(--down); }
+  .expand { padding: 0 12px 12px; border-top: 1px dashed var(--line);
+    margin-top: 2px; display: none; }
+  .item.open .expand { display: block; padding-top: 10px; }
+  .field-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .field-row label { font-size: 13px; color: var(--muted); min-width: 68px; }
+  .field-row input, .field-row textarea {
+    flex: 1; font-family: inherit; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    color: var(--ink); background: #fff; width: 100%;
+  }
+  .field-row textarea { resize: vertical; min-height: 40px; }
+  .row-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .row-actions button {
+    flex: 1; font-family: inherit; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    border-radius: 8px; padding: 9px; }
+  .row-actions button.skip-on { background: #f3f1ea; color: var(--ink); }
+  .item-actions { display: flex; align-items: center; gap: 4px; }
+  .caret { color: var(--muted); font-size: 13px; padding: 4px; }
+  .add-custom { display: flex; gap: 6px; padding: 8px 6px 4px; }
+  .add-custom input { flex: 1; font-family: inherit; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; background:#fff; color:var(--ink); }
+  .add-custom button { font-family: inherit; font-weight: 600; font-size: 15px;
+    border: none; background: var(--accent); color: #fff; border-radius: 8px; padding: 9px 14px; }
+  .fab {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 60;
+  }
+  .fab button {
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    border: none; border-radius: 24px; padding: 13px 18px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.16); color: #fff; background: var(--ink);
+  }
+  .fab button.primary { background: var(--accent); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    z-index: 100; display: none; align-items: flex-end; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--bg); width: 100%; max-height: 88vh; overflow-y: auto;
+    border-radius: 16px 16px 0 0; padding: 16px 14px 30px; }
+  .modal h2 { font-size: 17px; margin: 0 0 4px; }
+  .modal p.sub { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .htable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .htable th, .htable td { padding: 7px 5px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .htable th:first-child, .htable td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); }
+  .htable th { color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; }
+  .htable td.up { color: var(--up); font-weight: 700; }
+  .htable td.down { color: var(--down); font-weight: 700; }
+  .htable-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
+  .modal-close { width: 100%; margin-top: 14px; font-family: inherit; font-weight: 700;
+    font-size: 15px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 10px; padding: 12px; }
+  .sync-note { font-size: 12px; color: var(--muted); text-align: center; padding: 4px 0 0; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 20px; font-size: 14px; }
+  .sync-status { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; height: 14px; }
+  .sync-status.err { color: var(--up); font-weight: 600; }
+  .sync-status.ok { color: var(--accent); }
+  .del-custom { color: var(--up); font-size: 13px; font-weight: 600; background:none;border:none;padding:4px 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lista de compras 🛒</h1>
+  <div class="month-bar">
+    <select id="monthSel"></select>
+    <button id="newMonthBtn" title="Nuevo mes">+ Mes</button>
+  </div>
+  <input class="search" id="search" placeholder="Buscar producto…" />
+  <div class="sync-status" id="syncStatus">Conectando…</div>
+  <div class="toolbar" id="filters">
+    <span class="chip active" data-f="all">Todos</span>
+    <span class="chip" data-f="pending">Faltan</span>
+    <span class="chip" data-f="checked">Comprados</span>
+    <span class="chip" data-f="active">Sin tachar</span>
+  </div>
+</header>
+
+<div class="summary" id="summary"></div>
+
+<main id="list"></main>
+
+<div class="fab">
+  <button id="histBtn">📊 Precios</button>
+  <button class="primary" id="resetBtn">↺ Nuevo mes</button>
+</div>
+
+<div class="modal-bg" id="histModal">
+  <div class="modal">
+    <h2>Historial de precios</h2>
+    <p class="sub">Variación respecto al mes anterior cargado. En rojo = aumento, en verde = baja.</p>
+    <div class="htable-wrap"><table class="htable" id="histTable"></table></div>
+    <button class="modal-close" id="histClose">Cerrar</button>
+  </div>
+</div>
+
+<script>
+// ===== Supabase config =====
+const SB_URL = "https://ddwahkeirbuehpxlsevj.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkd2Foa2VpcmJ1ZWhweGxzZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDg0OTksImV4cCI6MjEwMTUyNDQ5OX0.aJaFzlqDRpUzRJa0q0U-rCaQQkWidjo0UP0mIEGI-CY";
+const SB_ROW = "mi_lista";
+const SB_ENDPOINT = SB_URL + "/rest/v1/lista_estado";
+const SB_HEADERS = {
+  "apikey": SB_KEY,
+  "Authorization": "Bearer " + SB_KEY,
+  "Content-Type": "application/json"
+};
+function setSync(txt, cls){
+  const el = document.getElementById("syncStatus");
+  if(el){ el.textContent = txt; el.className = "sync-status" + (cls?(" "+cls):""); }
+}
+
+const SECTIONS = {
+  super: "🏪 Supermercado",
+  verd: "🥬 Verdulería",
+  carn: "🥩 Carnicería"
+};
+
+const BASE = {
+  super: ["Puré de tomate","Tomate perita en lata","Arroz","Fideo tirabuzón","Fideo mostachol o penne","Fideo cintitas","Fideo codito","Fideo largo","Fideos para sopa","Tapas lasagna","Azúcar","Lata choclo","Harina leudante","Harina común","Caldo o sobrecitos","Escencia de vainilla","Coco rallado","Galletitas de agua","Orégano","Pimentón","Cerealitas","Vainillas","Yerba mate","Mate cocido","Mate cocido vainilla","Té común","Té de manzanilla","Pan rallado","Pan de hamburguesa","Pan de panchos","Café","Aceite","Aceite oliva","Sal fina","Bidón de agua","Sal gruesa","Garbanzos","Cereales","Snacks","Nesquik","Mayonesa","Ketchup","Mostaza","Insecticida","Detergente","Jabón para piso","Limpieza de inodoro","Jabón para la ropa","Suavizante","Papel higiénico","Repelente","Jabón líquido de baño","Papel de cocina","Trapo rejilla","Trapo piso","Repasador","Saphirus","Esponja","Cepillo de dientes","Hisopos","Dentrífico","Shampoo","Toallitas húmedas","Crema enjuague","Jabón","Desodorantes","Protector para el sol","Crema de leche","Dulce de leche","Leche","Queso crema","Queso fontina o gouda","Queso parmesano o reggi","Queso cheddar en feta","Queso cremoso","Queso mozzarella","Queso danbo en fetas","Jamón en fetas","Tapa de tartas","Salchichas","Tapa de empanadas","Salchichas de copetín","Coca Cola light","Coca Cola común","Aquarius","Yogurt","Lavandina","Manteca","Maple de huevos"],
+  verd: ["Papas","Ajo","Perejil","Cebolla","Zanahoria","Morrón","Tomate","Bananas","Manzanas"],
+  carn: ["Milanesa de pollo","Nalga (milanesa)","Carne picada","Paleta","Hamburguesas","Osobuco","Nuggets","Bastones de muzzarella","Pata muslo","Matambrito de cerdo","Costilla de cerdo","Bondiola","Asado","Riñón","Mollejas","Vacío","Morcilla","Chorizo"]
+};
+
+let STATE = null;
+let curMonth = null;
+let filter = "all";
+let searchTerm = "";
+
+function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function monthLabel(k){
+  const [y,m]=k.split("-");
+  const names=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return names[+m-1]+" "+y;
+}
+function uid(){ return "c"+Date.now()+Math.floor(Math.random()*1000); }
+
+function blankItems(){
+  const items = {};
+  for (const sec in BASE){
+    BASE[sec].forEach(name=>{
+      items[sec+"::"+name] = { sec, name, custom:false, checked:false, skipped:false, desc:"", price:null };
+    });
+  }
+  return items;
+}
+
+async function load(){
+  setSync("Cargando…");
+  try {
+    const res = await fetch(`${SB_ENDPOINT}?id=eq.${SB_ROW}&select=data`, { headers: SB_HEADERS });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = await res.json();
+    const data = rows && rows[0] ? rows[0].data : null;
+    if (data && data.months) STATE = data;
+  } catch(e){
+    console.error("load failed", e);
+    setSync("Sin conexión — reintentá", "err");
+  }
+  if (!STATE || !STATE.months){
+    const k = monthKey(new Date());
+    STATE = { months: { [k]: { items: blankItems() } }, order: [k] };
+    curMonth = STATE.order[STATE.order.length-1];
+    render();
+    save();
+    return;
+  }
+  curMonth = STATE.order[STATE.order.length-1];
+  render();
+  setSync("Sincronizado ✓", "ok");
+}
+
+let saveTimer=null, saving=false, pending=false;
+function save(){
+  clearTimeout(saveTimer);
+  setSync("Guardando…");
+  saveTimer = setTimeout(doSave, 500);
+}
+async function doSave(){
+  if(saving){ pending=true; return; }
+  saving=true; pending=false;
+  try {
+    const res = await fetch(`${SB_ENDPOINT}?id=eq.${SB_ROW}`, {
+      method: "PATCH",
+      headers: { ...SB_HEADERS, "Prefer": "return=minimal" },
+      body: JSON.stringify({ data: STATE })
+    });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    setSync("Sincronizado ✓", "ok");
+  } catch(e){
+    console.error("save failed", e);
+    setSync("Error al guardar — reintentá", "err");
+  } finally {
+    saving=false;
+    if(pending) doSave();
+  }
+}
+
+// Al volver a la app (cambiar de pestaña o reabrir), recargar desde la nube
+let lastRefresh = Date.now();
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden && Date.now()-lastRefresh > 3000){
+    lastRefresh = Date.now();
+    refresh();
+  }
+});
+async function refresh(){
+  try {
+    const res = await fetch(`${SB_ENDPOINT}?id=eq.${SB_ROW}&select=data`, { headers: SB_HEADERS });
+    if(!res.ok) return;
+    const rows = await res.json();
+    const data = rows && rows[0] ? rows[0].data : null;
+    if(data && data.months){
+      STATE = data;
+      if(!STATE.months[curMonth]) curMonth = STATE.order[STATE.order.length-1];
+      render();
+      setSync("Sincronizado ✓", "ok");
+    }
+  } catch(e){ /* silencioso */ }
+}
+
+function curItems(){ return STATE.months[curMonth].items; }
+
+function prevMonthOf(k){
+  const idx = STATE.order.indexOf(k);
+  return idx>0 ? STATE.order[idx-1] : null;
+}
+
+function priceIn(monthK, itemKey){
+  const m = STATE.months[monthK];
+  if (!m) return null;
+  const it = m.items[itemKey];
+  return it && it.price!=null ? it.price : null;
+}
+
+function newMonth(){
+  const keys = STATE.order;
+  const last = keys[keys.length-1];
+  const [y,m] = last.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  let k = monthKey(d);
+  while (STATE.months[k]){ d.setMonth(d.getMonth()+1); k = monthKey(d); }
+  const items = {};
+  const prev = STATE.months[last].items;
+  for (const key in prev){
+    const p = prev[key];
+    items[key] = { sec:p.sec, name:p.name, custom:p.custom, checked:false, skipped:p.skipped, desc:p.desc, price:p.price };
+  }
+  STATE.months[k] = { items };
+  STATE.order.push(k);
+  curMonth = k;
+  save(); render();
+}
+
+function render(){
+  const sel = document.getElementById("monthSel");
+  sel.innerHTML = STATE.order.map(k=>`<option value="${k}" ${k===curMonth?"selected":""}>${monthLabel(k)}</option>`).join("");
+
+  const items = curItems();
+  const keys = Object.keys(items);
+  let tot=0, done=0, active=0, sum=0;
+  keys.forEach(k=>{ const it=items[k];
+    if(!it.skipped){ tot++; if(it.checked){done++; if(it.price)sum+=it.price;} active++; }
+  });
+  document.getElementById("summary").innerHTML =
+    `<span><b>${done}</b>/${tot} comprados</span>`+
+    `<span>Gastado: <b>$${sum.toLocaleString("es-AR")}</b></span>`;
+
+  const term = searchTerm.toLowerCase();
+  const list = document.getElementById("list");
+  let html = "";
+  for (const sec in SECTIONS){
+    let rows = keys.filter(k=>items[k].sec===sec);
+    rows = rows.filter(k=>{
+      const it=items[k];
+      if (term && !it.name.toLowerCase().includes(term)) return false;
+      if (filter==="pending" && (it.checked||it.skipped)) return false;
+      if (filter==="checked" && !it.checked) return false;
+      if (filter==="active" && it.skipped) return false;
+      return true;
+    });
+    if (!rows.length) continue;
+    html += `<div class="section-title">${SECTIONS[sec]}</div>`;
+    rows.sort((a,b)=>items[a].name.localeCompare(items[b].name,"es"));
+    rows.forEach(k=>{ html += itemHTML(k, items[k]); });
+    html += `<div class="add-custom">
+      <input id="add-${sec}" placeholder="Agregar a ${SECTIONS[sec].replace(/[^A-Za-zÀ-ÿ ]/g,'').trim()}…" />
+      <button onclick="addCustom('${sec}')">Agregar</button></div>`;
+  }
+  if (!html) html = `<div class="empty">Nada que mostrar con este filtro.</div>`;
+  list.innerHTML = html;
+}
+
+function itemHTML(key, it){
+  const prev = prevMonthOf(curMonth);
+  const pp = prev ? priceIn(prev, key) : null;
+  let delta = "";
+  if (it.price!=null && pp!=null && pp>0){
+    const pct = ((it.price-pp)/pp)*100;
+    if (Math.abs(pct)>=0.5){
+      const cls = pct>0?"up":"down";
+      const arrow = pct>0?"▲":"▼";
+      delta = `<div class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}%</div>`;
+    }
+  }
+  const priceDisp = it.price!=null ? `$${it.price.toLocaleString("es-AR")}` : `<span class="none">—</span>`;
+  const escName = it.name.replace(/'/g,"\\'");
+  return `<div class="item ${it.checked?'checked':''} ${it.skipped?'skipped':''}" id="i-${key}">
+    <div class="item-main">
+      <div class="check" onclick="toggleCheck('${key}')">${it.checked?'✓':''}</div>
+      <div class="name-wrap" onclick="toggleOpen('${key}')">
+        <div class="name">${it.name}${it.custom?' ·':''}</div>
+        ${it.desc?`<div class="desc-preview">${it.desc}</div>`:''}
+      </div>
+      <div class="item-actions">
+        <div class="price-tag">${priceDisp}${delta}</div>
+        <span class="caret" onclick="toggleOpen('${key}')">▾</span>
+      </div>
+    </div>
+    <div class="expand">
+      <div class="field-row">
+        <label>Precio $</label>
+        <input type="number" inputmode="decimal" value="${it.price!=null?it.price:''}" placeholder="0"
+          onchange="setPrice('${key}', this.value)" />
+      </div>
+      <div class="field-row">
+        <label>Nota</label>
+        <textarea placeholder="marca, cantidad, dónde…" oninput="setDesc('${key}', this.value)">${it.desc||''}</textarea>
+      </div>
+      <div class="row-actions">
+        <button class="${it.skipped?'skip-on':''}" onclick="toggleSkip('${key}')">${it.skipped?'✔ No comprar este mes':'✕ No comprar este mes'}</button>
+        ${it.custom?`<button class="del-custom" onclick="delCustom('${key}')">Eliminar</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCheck(k){ const it=curItems()[k]; it.checked=!it.checked; if(it.checked)it.skipped=false; save(); render(); }
+function toggleSkip(k){ const it=curItems()[k]; it.skipped=!it.skipped; if(it.skipped)it.checked=false; save(); render(); }
+function toggleOpen(k){ document.getElementById("i-"+k).classList.toggle("open"); }
+function setPrice(k,v){ const it=curItems()[k]; it.price = v==="" ? null : parseFloat(v); save(); render(); reopenIfNeeded(k); }
+function setDesc(k,v){ curItems()[k].desc = v; save(); }
+function reopenIfNeeded(k){ const el=document.getElementById("i-"+k); if(el) el.classList.add("open"); }
+
+function addCustom(sec){
+  const inp = document.getElementById("add-"+sec);
+  const name = inp.value.trim();
+  if(!name) return;
+  const key = sec+"::"+name+"::"+uid();
+  curItems()[key] = { sec, name, custom:true, checked:false, skipped:false, desc:"", price:null };
+  inp.value=""; save(); render();
+}
+function delCustom(k){ delete curItems()[k]; save(); render(); }
+
+// history modal
+function openHist(){
+  const tbl = document.getElementById("histTable");
+  const months = STATE.order;
+  // build union of item keys that have any price
+  const rowKeys = new Set();
+  months.forEach(mk=>{ const it=STATE.months[mk].items; for(const k in it){ if(it[k].price!=null) rowKeys.add(k); } });
+  let head = `<tr><th>Producto</th>`;
+  months.forEach(mk=> head += `<th>${monthLabel(mk)}</th>`);
+  head += `<th>Var. total</th></tr>`;
+  let body = "";
+  const nameOf = k=>{ for(const mk of months){ const it=STATE.months[mk].items[k]; if(it) return it.name; } return k; };
+  const sorted = [...rowKeys].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),"es"));
+  sorted.forEach(k=>{
+    let cells = `<td>${nameOf(k)}</td>`;
+    let firstP=null, lastP=null, prevP=null;
+    months.forEach(mk=>{
+      const p = priceIn(mk,k);
+      if(p==null){ cells+=`<td>—</td>`; return; }
+      let cls="", tag="";
+      if(prevP!=null && prevP>0){
+        const pct=((p-prevP)/prevP)*100;
+        if(Math.abs(pct)>=0.5){ cls=pct>0?"up":"down"; tag=` <small>${pct>0?'▲':'▼'}${Math.abs(pct).toFixed(0)}%</small>`; }
+      }
+      cells+=`<td class="${cls}">$${p.toLocaleString("es-AR")}${tag}</td>`;
+      if(firstP==null) firstP=p;
+      lastP=p; prevP=p;
+    });
+    let totCls="", totTxt="—";
+    if(firstP!=null && lastP!=null && firstP>0 && lastP!==firstP){
+      const pct=((lastP-firstP)/firstP)*100;
+      totCls=pct>0?"up":"down";
+      totTxt=`${pct>0?'+':''}${pct.toFixed(0)}%`;
+    }
+    cells+=`<td class="${totCls}">${totTxt}</td>`;
+    body+=`<tr>${cells}</tr>`;
+  });
+  if(!body) body = `<tr><td colspan="99" style="text-align:center;color:var(--muted);padding:24px 0;">Todavía no cargaste precios. Ingresá precios en la lista para ver el historial.</td></tr>`;
+  tbl.innerHTML = head+body;
+  document.getElementById("histModal").classList.add("show");
+}
+
+// events
+document.getElementById("monthSel").onchange = e=>{ curMonth=e.target.value; render(); };
+document.getElementById("newMonthBtn").onclick = newMonth;
+document.getElementById("resetBtn").onclick = ()=>{
+  if(confirm("Crear un mes nuevo copiando los precios del mes actual? (los tildados se reinician)")) newMonth();
+};
+document.getElementById("search").oninput = e=>{ searchTerm=e.target.value; render(); };
+document.getElementById("filters").onclick = e=>{
+  if(!e.target.classList.contains("chip")) return;
+  filter = e.target.dataset.f;
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+  e.target.classList.add("active");
+  render();
+};
+document.getElementById("histBtn").onclick = openHist;
+document.getElementById("histClose").onclick = ()=>document.getElementById("histModal").classList.remove("show");
+document.getElementById("histModal").onclick = e=>{ if(e.target.id==="histModal") e.currentTarget.classList.remove("show"); };
+
+load();
+</script>
+</body>
+</html>
