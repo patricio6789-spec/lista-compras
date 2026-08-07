@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lista de compras</title>
+<style>
+  :root {
+    --bg: #f5f4ef;
+    --card: #ffffff;
+    --ink: #1c1c1a;
+    --muted: #7a7a72;
+    --line: #e5e3db;
+    --accent: #1d9e75;
+    --accent-dark: #0f6e56;
+    --up: #d85a30;
+    --down: #1d9e75;
+    --skip: #b4b2a9;
+    --radius: 12px;
+    --check-bg: #eef7f2;
+    --check-line: #cbe8dc;
+    --input-bg: #ffffff;
+    --hist-row: #faf9f5;
+  }
+  body.dark {
+    --bg: #16161a;
+    --card: #232329;
+    --ink: #ececea;
+    --muted: #9a9a94;
+    --line: #34343c;
+    --accent: #2bb888;
+    --accent-dark: #1d9e75;
+    --up: #ff7a4d;
+    --down: #2bb888;
+    --skip: #5a5a60;
+    --check-bg: #1c2e28;
+    --check-line: #2b4a3f;
+    --input-bg: #1b1b20;
+    --hist-row: #1c1c22;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.4;
+    padding-bottom: 90px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 14px 8px;
+  }
+  h1 { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
+  .title-row { display: flex; align-items: center; justify-content: space-between; }
+  .title-row h1 { margin: 0 0 8px; }
+  .theme-btn { font-size: 18px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; width: 38px; height: 38px; cursor: pointer; }
+  .month-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .month-bar select, .month-bar button {
+    font-size: 15px; font-family: inherit;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 8px 10px; color: var(--ink);
+  }
+  .month-bar select { flex: 1; font-weight: 600; }
+  .month-bar button { font-weight: 600; }
+  .week-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .week-bar select, .week-bar button {
+    font-size: 14px; font-family: inherit;
+    border: 1px solid var(--line); background: var(--input-bg);
+    border-radius: 8px; padding: 7px 10px; color: var(--ink);
+  }
+  .week-bar select { flex: 1; font-weight: 600; color: var(--accent); }
+  .week-bar button { font-weight: 600; color: var(--accent); }
+  .search { width: 100%; font-size: 16px; font-family: inherit;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 10px 12px; color: var(--ink); }
+  .toolbar { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .chip {
+    font-size: 13px; font-weight: 600; padding: 6px 11px;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 20px; color: var(--muted);
+  }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .summary { padding: 8px 14px; font-size: 14px; color: var(--muted); }
+  .summary .sum-row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; align-items: center; }
+  .summary b { color: var(--ink); }
+  .summary b.over { color: var(--up); }
+  .set-budget { color: var(--accent); font-weight: 600; }
+  .infl { font-weight: 700; }
+  .infl.up { color: var(--up); }
+  .infl.down { color: var(--down); }
+  .qty-badge { font-size: 13px; font-weight: 700; color: var(--accent); margin-left: 6px; }
+  .stepper { display: flex; align-items: center; gap: 0; flex: 1; }
+  .stepper button { width: 40px; height: 40px; font-size: 22px; font-family: inherit;
+    border: 1px solid var(--line); background: var(--input-bg); color: var(--ink); }
+  .stepper button:first-child { border-radius: 8px 0 0 8px; }
+  .stepper button:last-child { border-radius: 0 8px 8px 0; }
+  .stepper input { width: 56px; text-align: center; border-radius: 0 !important;
+    border-left: none !important; border-right: none !important; -moz-appearance: textfield; }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .qty-row label { min-width: 68px; }
+  .subtotal { font-weight: 700; color: var(--ink); font-size: 15px; }
+  main { padding: 0 10px; }
+  .section-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted);
+    padding: 16px 6px 6px; display: flex; align-items: center; gap: 6px;
+  }
+  .item {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); margin-bottom: 8px; overflow: hidden;
+  }
+  .item.checked { background: var(--check-bg); border-color: var(--check-line); }
+  .item.skipped { opacity: .55; }
+  .item-main { display: flex; align-items: center; gap: 10px; padding: 12px; }
+  .check {
+    width: 26px; height: 26px; min-width: 26px; border-radius: 7px;
+    border: 2px solid var(--line); display: flex; align-items: center;
+    justify-content: center; background: var(--input-bg); font-size: 16px; color: #fff;
+  }
+  .item.checked .check { background: var(--accent); border-color: var(--accent); }
+  .name-wrap { flex: 1; min-width: 0; }
+  .name { font-size: 16px; font-weight: 500; }
+  .item.skipped .name { text-decoration: line-through; }
+  .desc-preview { font-size: 13px; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price-tag { font-size: 15px; font-weight: 600; text-align: right; min-width: 62px; }
+  .price-tag .none { color: var(--line); font-weight: 400; }
+  .price-was { display: block; font-size: 12px; font-weight: 400; color: var(--muted);
+    text-decoration: line-through; }
+  .price-now { display: block; color: var(--accent); font-weight: 700; }
+  .disc-badge { font-size: 11px; font-weight: 800; color: #fff; background: var(--accent);
+    border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+  .saved-line { color: var(--accent); }
+  .saved-line b { color: var(--accent); }
+  .gdisc-line { color: var(--accent); }
+  .gdisc-line b { color: var(--accent); }
+  .gd-was { color: var(--muted); text-decoration: line-through; font-weight: 400; }
+  .subtotal .price-was { display: inline; font-size: 13px; margin-right: 4px; }
+  .delta { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .delta.up { color: var(--up); }
+  .delta.down { color: var(--down); }
+  .expand { padding: 0 12px 12px; border-top: 1px dashed var(--line);
+    margin-top: 2px; display: none; }
+  .item.open .expand { display: block; padding-top: 10px; }
+  .field-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .field-row label { font-size: 13px; color: var(--muted); min-width: 68px; }
+  .field-row input, .field-row textarea {
+    flex: 1; font-family: inherit; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    color: var(--ink); background: var(--input-bg); width: 100%;
+  }
+  .field-row textarea { resize: vertical; min-height: 40px; }
+  .row-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .row-actions button {
+    flex: 1; font-family: inherit; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--line); background: var(--input-bg); color: var(--muted);
+    border-radius: 8px; padding: 9px; }
+  .row-actions button.skip-on { background: #f3f1ea; color: var(--ink); }
+  .item-actions { display: flex; align-items: center; gap: 4px; }
+  .caret { color: var(--muted); font-size: 13px; padding: 4px; }
+  .add-custom { display: flex; gap: 6px; padding: 8px 6px 4px; }
+  .add-custom input { flex: 1; font-family: inherit; font-size: 15px;
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; background:var(--input-bg); color:var(--ink); }
+  .add-custom button { font-family: inherit; font-weight: 600; font-size: 15px;
+    border: none; background: var(--accent); color: #fff; border-radius: 8px; padding: 9px 14px; }
+  .fab {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 60;
+  }
+  .fab button {
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    border: none; border-radius: 24px; padding: 13px 18px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.16); color: #fff; background: var(--ink);
+  }
+  .fab button.primary { background: var(--accent); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    z-index: 100; display: none; align-items: flex-end; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--bg); width: 100%; max-height: 88vh; overflow-y: auto;
+    border-radius: 16px 16px 0 0; padding: 16px 14px 30px; }
+  .modal h2 { font-size: 17px; margin: 0 0 4px; }
+  .modal p.sub { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .htable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .htable th, .htable td { padding: 7px 5px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .htable th:first-child, .htable td:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); }
+  .htable th { color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; }
+  .htable td.up { color: var(--up); font-weight: 700; }
+  .htable td.down { color: var(--down); font-weight: 700; }
+  .htable-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
+  .modal-close { width: 100%; margin-top: 14px; font-family: inherit; font-weight: 700;
+    font-size: 15px; border: 1px solid var(--line); background: var(--input-bg); color: var(--ink);
+    border-radius: 10px; padding: 12px; }
+  .sync-note { font-size: 12px; color: var(--muted); text-align: center; padding: 4px 0 0; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 20px; font-size: 14px; }
+  .reorder-banner { background: var(--check-bg); border: 1px solid var(--check-line);
+    color: var(--ink); border-radius: var(--radius); padding: 12px 14px; font-size: 13px;
+    margin: 10px 6px; line-height: 1.4; }
+  .sec-count { background: var(--line); color: var(--muted); font-size: 11px;
+    font-weight: 700; border-radius: 10px; padding: 1px 8px; margin-left: 8px; }
+  .reorder-chip { border-style: dashed; }
+  .item.reorder { background: var(--card); }
+  .item.reorder .item-main { padding: 14px 12px; }
+  .reorder-btns { display: flex; gap: 6px; }
+  .reorder-btns button { width: 44px; height: 44px; font-size: 18px; border: 1px solid var(--line);
+    background: var(--input-bg); color: var(--ink); border-radius: 8px; font-family: inherit; }
+  .reorder-btns button:disabled { opacity: .3; }
+  .restock-badge { margin-left: 6px; font-size: 13px; }
+  .otherweek-badge { margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; vertical-align: middle; }
+  .rem-ok b { color: var(--accent); }  .restock-on { background: #eaf4ff !important; color: #1a6dc7 !important; }
+  body.dark .restock-on { background: #17293b !important; color: #6db4f0 !important; }
+  .clear-btn { width: 40px; height: 40px; border: 1px solid var(--line); background: var(--input-bg);
+    color: var(--muted); border-radius: 8px; font-size: 15px; font-family: inherit; }
+  .undo-bar { position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg); border-radius: 24px; padding: 10px 12px 10px 18px;
+    display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 4px 14px rgba(0,0,0,.25); opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s; z-index: 70; max-width: 90vw; }
+  .undo-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .undo-bar span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .undo-bar button { background: var(--accent); color: #fff; border: none; border-radius: 18px;
+    padding: 8px 14px; font-weight: 700; font-family: inherit; font-size: 14px; }
+  .sync-status { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; height: 14px; }
+  .sync-status.err { color: var(--up); font-weight: 600; }
+  .sync-status.ok { color: var(--accent); }
+  .del-custom { color: var(--up); font-size: 13px; font-weight: 600; background:none;border:none;padding:4px 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-row">
+    <h1>Lista de compras 🛒</h1>
+    <button class="theme-btn" id="themeBtn" title="Modo oscuro">🌙</button>
+  </div>
+  <div class="month-bar">
+    <select id="monthSel"></select>
+    <button id="newMonthBtn" title="Nuevo mes">+ Mes</button>
+  </div>
+  <div class="week-bar">
+    <select id="weekSel"></select>
+    <button id="newWeekBtn" title="Nueva semana">+ Semana</button>
+  </div>
+  <input class="search" id="search" placeholder="Buscar producto…" />
+  <div class="sync-status" id="syncStatus">Conectando…</div>
+  <div class="toolbar" id="filters">
+    <span class="chip active" data-f="all">Todos</span>
+    <span class="chip" data-f="pending">Faltan</span>
+    <span class="chip" data-f="checked">Comprados</span>
+    <span class="chip" data-f="active">Sin tachar</span>
+    <span class="chip reorder-chip" id="reorderChip">↕ Ordenar</span>
+  </div>
+</header>
+
+<div class="summary" id="summary"></div>
+
+<main id="list"></main>
+
+<div class="fab">
+  <button id="histBtn">📊 Precios</button>
+  <button class="primary" id="resetBtn">↺ Nuevo mes</button>
+</div>
+
+<div class="modal-bg" id="histModal">
+  <div class="modal">
+    <h2>Historial de precios</h2>
+    <p class="sub">Variación de precio unitario vs. el mes anterior. Rojo = aumento, verde = baja. La última fila es la inflación de tu canasta (solo productos con precio en ambos meses).</p>
+    <div class="htable-wrap"><table class="htable" id="histTable"></table></div>
+    <button class="modal-close" id="histClose">Cerrar</button>
+  </div>
+</div>
+
+<script>
+// ===== Supabase config =====
+const SB_URL = "https://ddwahkeirbuehpxlsevj.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkd2Foa2VpcmJ1ZWhweGxzZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5NDg0OTksImV4cCI6MjEwMTUyNDQ5OX0.aJaFzlqDRpUzRJa0q0U-rCaQQkWidjo0UP0mIEGI-CY";
+const SB_ROW = "mi_lista";
+const SB_ENDPOINT = SB_URL + "/rest/v1/lista_estado";
+const SB_HEADERS = {
+  "apikey": SB_KEY,
+  "Authorization": "Bearer " + SB_KEY,
+  "Content-Type": "application/json"
+};
+function setSync(txt, cls){
+  const el = document.getElementById("syncStatus");
+  if(el){ el.textContent = txt; el.className = "sync-status" + (cls?(" "+cls):""); }
+}
+
+const SECTIONS = {
+  super: "🏪 Supermercado",
+  verd: "🥬 Verdulería",
+  carn: "🥩 Carnicería"
+};
+
+const BASE = {
+  super: ["Puré de tomate","Tomate perita en lata","Arroz","Fideo tirabuzón","Fideo mostachol o penne","Fideo cintitas","Fideo codito","Fideo largo","Fideos para sopa","Tapas lasagna","Azúcar","Lata choclo","Harina leudante","Harina común","Caldo o sobrecitos","Escencia de vainilla","Coco rallado","Galletitas de agua","Orégano","Pimentón","Cerealitas","Vainillas","Yerba mate","Mate cocido","Mate cocido vainilla","Té común","Té de manzanilla","Pan rallado","Pan de hamburguesa","Pan de panchos","Café","Aceite","Aceite oliva","Sal fina","Bidón de agua","Sal gruesa","Garbanzos","Cereales","Snacks","Nesquik","Mayonesa","Ketchup","Mostaza","Insecticida","Detergente","Jabón para piso","Limpieza de inodoro","Jabón para la ropa","Suavizante","Papel higiénico","Repelente","Jabón líquido de baño","Papel de cocina","Trapo rejilla","Trapo piso","Repasador","Saphirus","Esponja","Cepillo de dientes","Hisopos","Dentrífico","Shampoo","Toallitas húmedas","Crema enjuague","Jabón","Desodorantes","Protector para el sol","Crema de leche","Dulce de leche","Leche","Queso crema","Queso fontina o gouda","Queso parmesano o reggi","Queso cheddar en feta","Queso cremoso","Queso mozzarella","Queso danbo en fetas","Jamón en fetas","Tapa de tartas","Salchichas","Tapa de empanadas","Salchichas de copetín","Coca Cola light","Coca Cola común","Aquarius","Yogurt","Lavandina","Manteca","Maple de huevos"],
+  verd: ["Papas","Ajo","Perejil","Cebolla","Zanahoria","Morrón","Tomate","Bananas","Manzanas"],
+  carn: ["Milanesa de pollo","Nalga (milanesa)","Carne picada","Paleta","Hamburguesas","Osobuco","Nuggets","Bastones de muzzarella","Pata muslo","Matambrito de cerdo","Costilla de cerdo","Bondiola","Asado","Riñón","Mollejas","Vacío","Morcilla","Chorizo"]
+};
+
+let STATE = null;
+let curMonth = null;
+let curWeek = null;
+let filter = "all";
+let searchTerm = "";
+let reorderMode = false;
+
+function monthKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function monthLabel(k){
+  const [y,m]=k.split("-");
+  const names=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return names[+m-1]+" "+y;
+}
+function uid(){ return "c"+Date.now()+Math.floor(Math.random()*1000); }
+
+function blankItems(){
+  const items = {};
+  for (const sec in BASE){
+    BASE[sec].forEach(name=>{
+      items[sec+"::"+name] = { sec, name, custom:false, checked:false, skipped:false, desc:"", price:null, qty:1, disc:null };
+    });
+  }
+  return items;
+}
+
+// Migra el estado viejo (checked dentro de items) al modelo con semanas.
+// Cada mes gana un objeto weeks: { "Semana 1": { checks: {itemKey:true}, done:{itemKey:true} } }
+// - checks: qué está tildado (marcado como comprado) en esa semana
+// El precio/qty/disc/desc/skip/restock/order siguen viviendo en items (nivel mes).
+function migrate(){
+  for(const mk in STATE.months){
+    const m = STATE.months[mk];
+    if(!m.weeks){
+      // construir Semana 1 a partir del checked actual de los items
+      const checks = {};
+      for(const key in m.items){
+        if(m.items[key].checked) checks[key] = true;
+        // limpiar checked del item: ahora vive en la semana
+        delete m.items[key].checked;
+      }
+      m.weeks = { "Semana 1": { checks } };
+      m.weekOrder = ["Semana 1"];
+    }
+    // asegurar weekOrder
+    if(!m.weekOrder) m.weekOrder = Object.keys(m.weeks);
+  }
+}
+
+function curMonthObj(){ return STATE.months[curMonth]; }
+function curWeekObj(){
+  const m = curMonthObj();
+  if(!curWeek || !m.weeks[curWeek]) curWeek = m.weekOrder[m.weekOrder.length-1];
+  return m.weeks[curWeek];
+}
+function isChecked(key){ return !!curWeekObj().checks[key]; }
+// ¿Está tildado en ALGUNA semana del mes? (para no re-comprar lo ya comprado)
+function checkedAnyWeek(key){
+  const m = curMonthObj();
+  for(const w in m.weeks){ if(m.weeks[w].checks[key]) return true; }
+  return false;
+}
+
+async function load(){
+  setSync("Cargando…");
+  try {
+    const res = await fetch(`${SB_ENDPOINT}?id=eq.${SB_ROW}&select=data`, { headers: SB_HEADERS });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = await res.json();
+    const data = rows && rows[0] ? rows[0].data : null;
+    if (data && data.months) STATE = data;
+  } catch(e){
+    console.error("load failed", e);
+    setSync("Sin conexión — reintentá", "err");
+  }
+  if (!STATE || !STATE.months){
+    const k = monthKey(new Date());
+    STATE = { months: { [k]: { items: blankItems(), weeks: { "Semana 1": { checks:{} } }, weekOrder: ["Semana 1"] } }, order: [k] };
+    curMonth = STATE.order[STATE.order.length-1];
+    curWeek = "Semana 1";
+    render();
+    save();
+    return;
+  }
+  migrate();
+  curMonth = STATE.order[STATE.order.length-1];
+  curWeek = curMonthObj().weekOrder[curMonthObj().weekOrder.length-1];
+  render();
+  setSync("Sincronizado ✓", "ok");
+}
+
+let saveTimer=null, saving=false, pending=false;
+function save(){
+  clearTimeout(saveTimer);
+  setSync("Guardando…");
+  saveTimer = setTimeout(doSave, 500);
+}
+async function doSave(){
+  if(saving){ pending=true; return; }
+  saving=true; pending=false;
+  try {
+    const res = await fetch(`${SB_ENDPOINT}?id=eq.${SB_ROW}`, {
+      method: "PATCH",
+      headers: { ...SB_HEADERS, "Prefer": "return=minimal" },
+      body: JSON.stringify({ data: STATE })
+    });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    setSync("Sincronizado ✓", "ok");
+  } catch(e){
+    console.error("save failed", e);
+    setSync("Error al guardar — reintentá", "err");
+  } finally {
+    saving=false;
+    if(pending) doSave();
+  }
+}
+
+// Al volver a la app (cambiar de pestaña o reabrir), recargar desde la nube
+let lastRefresh = Date.now();
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden && Date.now()-lastRefresh > 3000){
+    lastRefresh = Date.now();
+    refresh();
+  }
+});
+async function refresh(){
+  try {
+    const res = await fetch(`${SB_ENDPOINT}?id=eq.${SB_ROW}&select=data`, { headers: SB_HEADERS });
+    if(!res.ok) return;
+    const rows = await res.json();
+    const data = rows && rows[0] ? rows[0].data : null;
+    if(data && data.months){
+      STATE = data;
+      migrate();
+      if(!STATE.months[curMonth]) curMonth = STATE.order[STATE.order.length-1];
+      if(!curMonthObj().weeks[curWeek]) curWeek = curMonthObj().weekOrder[curMonthObj().weekOrder.length-1];
+      render();
+      setSync("Sincronizado ✓", "ok");
+    }
+  } catch(e){ /* silencioso */ }
+}
+
+function curItems(){ return STATE.months[curMonth].items; }
+
+function prevMonthOf(k){
+  const idx = STATE.order.indexOf(k);
+  return idx>0 ? STATE.order[idx-1] : null;
+}
+
+function priceIn(monthK, itemKey){
+  const m = STATE.months[monthK];
+  if (!m) return null;
+  const it = m.items[itemKey];
+  return it && it.price!=null ? it.price : null;
+}
+
+function newMonth(){
+  const keys = STATE.order;
+  const last = keys[keys.length-1];
+  const [y,m] = last.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  let k = monthKey(d);
+  while (STATE.months[k]){ d.setMonth(d.getMonth()+1); k = monthKey(d); }
+  const items = {};
+  const prev = STATE.months[last].items;
+  for (const key in prev){
+    const p = prev[key];
+    // Si estaba marcado para reponer, en el mes nuevo entra activo y se limpia el flag
+    const wasRestock = p.restock;
+    items[key] = { sec:p.sec, name:p.name, custom:p.custom,
+      skipped: wasRestock ? false : p.skipped, desc:p.desc, price:p.price,
+      qty:p.qty||1, order:p.order!=null?p.order:null, restock:false, disc:null };
+  }
+  STATE.months[k] = { items, budget: STATE.months[last].budget||null,
+    weeks: { "Semana 1": { checks:{} } }, weekOrder: ["Semana 1"] };
+  STATE.order.push(k);
+  curMonth = k;
+  curWeek = "Semana 1";
+  save(); render();
+}
+
+function newWeek(){
+  const m = curMonthObj();
+  const n = m.weekOrder.length + 1;
+  let name = "Semana "+n;
+  while(m.weeks[name]){ name = "Semana "+(Math.random().toString().slice(2,5)); }
+  m.weeks[name] = { checks:{} };
+  m.weekOrder.push(name);
+  curWeek = name;
+  save(); render();
+}
+
+// Inflación de la canasta: compara SOLO los productos que tienen precio
+// (unitario) en el mes actual y en el anterior, para que sea comparable.
+function basketInflation(mk){
+  const prev = prevMonthOf(mk);
+  if(!prev) return null;
+  const cur = STATE.months[mk].items;
+  const old = STATE.months[prev].items;
+  let sumCur=0, sumOld=0, n=0;
+  for(const k in cur){
+    const c = cur[k], o = old[k];
+    if(c && o && c.price!=null && o.price!=null && o.price>0){
+      sumCur += c.price; sumOld += o.price; n++;
+    }
+  }
+  if(n===0 || sumOld===0) return null;
+  return ((sumCur - sumOld)/sumOld)*100;
+}
+
+function setBudget(){
+  const cur = STATE.months[curMonth].budget;
+  const v = prompt("Presupuesto tope para "+monthLabel(curMonth)+" ($):", cur!=null?cur:"");
+  if(v===null) return;
+  const n = v.trim()==="" ? null : parseFloat(v);
+  STATE.months[curMonth].budget = (n!=null && !isNaN(n)) ? n : null;
+  save(); render();
+}
+
+function setGlobalDisc(){
+  const wk = curWeekObj();
+  const cur = wk.globalDisc || "";
+  const v = prompt("Descuento global de "+curWeek+" (%)\nEj: Comunidad COTO 15 → escribí 15", cur);
+  if(v===null) return;
+  let n = v.trim()==="" ? 0 : parseFloat(v);
+  if(isNaN(n)||n<0) n=0; else if(n>100) n=100;
+  wk.globalDisc = n>0 ? n : null;
+  save(); render();
+}
+
+function render(){
+  const sel = document.getElementById("monthSel");
+  sel.innerHTML = STATE.order.map(k=>`<option value="${k}" ${k===curMonth?"selected":""}>${monthLabel(k)}</option>`).join("");
+
+  const mObj = curMonthObj();
+  const wsel = document.getElementById("weekSel");
+  wsel.innerHTML = mObj.weekOrder.map(w=>{
+    const n = Object.keys(mObj.weeks[w].checks).length;
+    return `<option value="${w}" ${w===curWeek?"selected":""}>${w}${n?` (${n})`:""}</option>`;
+  }).join("");
+
+  const items = curItems();
+  const keys = Object.keys(items);
+  const m = curMonthObj();
+
+  // Gasto del MES: por cada semana, subtotal con descuentos de ítem y luego
+  // el descuento global de esa semana sobre ese subtotal.
+  let monthSpent = 0, monthSaved = 0;
+  let curWeekSubtotal = 0;  // subtotal de la semana actual (con desc de ítem, sin global)
+  for(const w in m.weeks){
+    const checks = m.weeks[w].checks;
+    const gDisc = m.weeks[w].globalDisc || 0;
+    let weekSub = 0, weekList = 0;
+    for(const key in checks){
+      const it = items[key];
+      if(!it || it.skipped) continue;
+      const q = it.qty||1;
+      const listLine = it.price!=null ? it.price*q : 0;
+      const d = it.disc!=null ? it.disc : 0;
+      weekList += listLine;
+      weekSub  += listLine*(1-d/100);
+    }
+    const weekPay = weekSub*(1-gDisc/100);
+    monthSpent += weekPay;
+    monthSaved += (weekList - weekPay);   // ahorro = promos de ítem + global
+    if(w===curWeek) curWeekSubtotal = weekSub;
+  }
+
+  // Estado de la SEMANA actual (para "comprados X/Y" y proyectado de la semana)
+  let tot=0, doneWeek=0, projected=0, saved=0;
+  keys.forEach(k=>{ const it=items[k];
+    if(it.skipped) return;
+    tot++;
+    const q = it.qty||1;
+    const listLine = (it.price!=null? it.price*q : 0);
+    const d = it.disc!=null ? it.disc : 0;
+    const payLine = listLine * (1 - d/100);
+    // proyectado de la semana: lo que falta comprar (no tildado en ninguna semana aún)
+    if(!checkedAnyWeek(k)) projected += payLine;
+    saved += listLine - payLine;
+    if(isChecked(k)) doneWeek++;
+  });
+
+  const budget = m.budget;
+  const infl = basketInflation(curMonth);
+  const remaining = budget!=null ? budget - monthSpent : null;
+
+  let budgetLine = "";
+  if(budget!=null){
+    const over = remaining < 0;
+    budgetLine = `<span class="${over?'over':'rem-ok'}">Resta: <b class="${over?'over':''}">$${Math.round(remaining).toLocaleString("es-AR")}</b>${over?' ⚠️':''}</span>`;
+  }
+  let inflLine = "";
+  if(infl!=null){
+    const cls = infl>0?'up':'down';
+    inflLine = `<span class="infl ${cls}">Tu canasta ${infl>0?'▲':'▼'} ${Math.abs(infl).toFixed(1)}%</span>`;
+  }
+  const savedLine = monthSaved>0
+    ? `<span class="saved-line">Ahorro mes: <b>$${Math.round(monthSaved).toLocaleString("es-AR")}</b></span>`
+    : "";
+
+  const gDiscCur = m.weeks[curWeek].globalDisc || 0;
+  let sum = "";
+  // Fila 1: comprados esta semana + gastado del mes
+  sum += `<div class="sum-row"><span><b>${doneWeek}</b>/${tot} esta semana</span>`+
+         `<span>Gastado mes: <b>$${Math.round(monthSpent).toLocaleString("es-AR")}</b></span></div>`;
+  // Fila 2: presupuesto restante (o botón para ponerlo)
+  if(budget!=null){
+    sum += `<div class="sum-row">${budgetLine}<span class="set-budget" onclick="setBudget()">Editar presup.</span></div>`;
+  } else {
+    sum += `<div class="sum-row"><span></span><span class="set-budget" onclick="setBudget()">+ Presupuesto mensual</span></div>`;
+  }
+  // Fila global de la semana: subtotal y total tras descuento global (COTO, etc.)
+  if(gDiscCur>0){
+    const totalWk = curWeekSubtotal*(1-gDiscCur/100);
+    sum += `<div class="sum-row"><span class="gdisc-line" onclick="setGlobalDisc()">`+
+           `Desc. ${curWeek} <b>-${gDiscCur}%</b>: `+
+           `<span class="gd-was">$${Math.round(curWeekSubtotal).toLocaleString("es-AR")}</span> `+
+           `<b>$${Math.round(totalWk).toLocaleString("es-AR")}</b></span>`+
+           `<span class="set-budget" onclick="setGlobalDisc()">Editar</span></div>`;
+  } else {
+    sum += `<div class="sum-row"><span></span><span class="set-budget" onclick="setGlobalDisc()">+ Desc. global semana</span></div>`;
+  }
+  // Fila: ahorro e inflación si aplican
+  if(savedLine || inflLine){
+    sum += `<div class="sum-row">${savedLine||'<span></span>'}${inflLine||'<span></span>'}</div>`;
+  }
+  document.getElementById("summary").innerHTML = sum;
+
+  const term = searchTerm.toLowerCase();
+  const list = document.getElementById("list");
+  let html = "";
+  if(reorderMode){
+    html += `<div class="reorder-banner">↕ Modo ordenar: acomodá los productos según tu recorrido del súper. Tocá "↕ Ordenar" de nuevo para terminar.</div>`;
+  }
+  for (const sec in SECTIONS){
+    let rows = keys.filter(k=>items[k].sec===sec);
+    rows = rows.filter(k=>{
+      const it=items[k];
+      if (term && !it.name.toLowerCase().includes(term)) return false;
+      if (reorderMode) return true;   // reordenar: se ven todos
+      const chk = isChecked(k);
+      if (filter==="checked") return chk;   // comprados esta semana
+      if (chk) return false;                // ocultar lo comprado esta semana
+      if (filter==="pending" && it.skipped) return false;
+      if (filter==="active" && it.skipped) return false;
+      return true;
+    });
+    if (!rows.length) continue;
+    const pend = rows.filter(k=>!isChecked(k) && !items[k].skipped).length;
+    html += `<div class="section-title">${SECTIONS[sec]}<span class="sec-count">${pend}</span></div>`;
+    rows.sort((a,b)=>{
+      const oa = items[a].order, ob = items[b].order;
+      if(oa!=null && ob!=null && oa!==ob) return oa-ob;
+      if(oa!=null && ob==null) return -1;
+      if(oa==null && ob!=null) return 1;
+      return items[a].name.localeCompare(items[b].name,"es");
+    });
+    rows.forEach((k,i)=>{ html += itemHTML(k, items[k], sec, i, rows.length); });
+    if(!reorderMode){
+      html += `<div class="add-custom">
+        <input id="add-${sec}" placeholder="Agregar a ${SECTIONS[sec].replace(/[^A-Za-zÀ-ÿ ]/g,'').trim()}…" />
+        <button onclick="addCustom('${sec}')">Agregar</button></div>`;
+    }
+  }
+  if (!html) html = `<div class="empty">Nada que mostrar con este filtro.</div>`;
+  list.innerHTML = html;
+}
+
+function itemHTML(key, it, sec, idx, total){
+  const prev = prevMonthOf(curMonth);
+  const pp = prev ? priceIn(prev, key) : null;
+  let delta = "";
+  if (it.price!=null && pp!=null && pp>0){
+    const pct = ((it.price-pp)/pp)*100;
+    if (Math.abs(pct)>=0.5){
+      const cls = pct>0?"up":"down";
+      const arrow = pct>0?"▲":"▼";
+      delta = `<div class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}%</div>`;
+    }
+  }
+  const q = it.qty||1;
+  const lineTotal = it.price!=null ? it.price*q : null;
+  const hasDisc = it.disc!=null && it.disc>0;
+  const payTotal = lineTotal!=null && hasDisc ? Math.round(lineTotal*(1-it.disc/100)) : lineTotal;
+  let priceDisp;
+  if(lineTotal==null){
+    priceDisp = `<span class="none">—</span>`;
+  } else if(hasDisc){
+    priceDisp = `<span class="price-was">$${lineTotal.toLocaleString("es-AR")}</span>`+
+                `<span class="price-now">$${payTotal.toLocaleString("es-AR")}</span>`;
+  } else {
+    priceDisp = `$${lineTotal.toLocaleString("es-AR")}`;
+  }
+  const qtyBadge = q>1 ? `<span class="qty-badge">×${q}</span>` : '';
+  const discBadge = hasDisc ? `<span class="disc-badge">-${it.disc}%</span>` : '';
+  const restockBadge = it.restock ? `<span class="restock-badge" title="Marcado para reponer">🔁</span>` : '';
+
+  if (reorderMode){
+    return `<div class="item reorder" id="i-${key}">
+      <div class="item-main">
+        <div class="name-wrap"><div class="name">${it.name}${qtyBadge}</div></div>
+        <div class="reorder-btns">
+          <button ${idx===0?'disabled':''} onclick="moveItem('${key}','${sec}',-1)">▲</button>
+          <button ${idx===total-1?'disabled':''} onclick="moveItem('${key}','${sec}',1)">▼</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const chk = isChecked(key);
+  const otherWeek = !chk && checkedAnyWeek(key);
+  const otherBadge = otherWeek ? `<span class="otherweek-badge" title="Comprado otra semana">✓ otra sem.</span>` : '';
+  return `<div class="item ${chk?'checked':''} ${it.skipped?'skipped':''}" id="i-${key}">
+    <div class="item-main">
+      <div class="check" onclick="toggleCheck('${key}')">${chk?'✓':''}</div>
+      <div class="name-wrap" onclick="toggleOpen('${key}')">
+        <div class="name">${it.name}${qtyBadge}${discBadge}${restockBadge}${otherBadge}${it.custom?' ·':''}</div>
+        ${it.desc?`<div class="desc-preview">${it.desc}</div>`:''}
+      </div>
+      <div class="item-actions">
+        <div class="price-tag">${priceDisp}${delta}</div>
+        <span class="caret" onclick="toggleOpen('${key}')">▾</span>
+      </div>
+    </div>
+    <div class="expand">
+      <div class="field-row qty-row">
+        <label>Cantidad</label>
+        <div class="stepper">
+          <button onclick="chgQty('${key}',-1)">−</button>
+          <input type="number" inputmode="numeric" value="${q}" min="1"
+            onchange="setQty('${key}', this.value)" />
+          <button onclick="chgQty('${key}',1)">+</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <label>Precio unit. $</label>
+        <input type="number" inputmode="decimal" value="${it.price!=null?it.price:''}" placeholder="0"
+          onchange="setPrice('${key}', this.value)" />
+        ${it.price!=null?`<button class="clear-btn" onclick="setPrice('${key}','')" title="Borrar precio">✕</button>`:''}
+      </div>
+      <div class="field-row">
+        <label>Descuento %</label>
+        <input type="number" inputmode="decimal" value="${it.disc!=null?it.disc:''}" placeholder="0" min="0" max="100"
+          onchange="setDisc('${key}', this.value)" />
+        ${hasDisc?`<button class="clear-btn" onclick="setDisc('${key}','')" title="Quitar descuento">✕</button>`:''}
+      </div>
+      ${it.price!=null && (q>1 || hasDisc) ? `<div class="field-row"><label>Subtotal</label><span class="subtotal">${hasDisc?`<span class="price-was">$${lineTotal.toLocaleString("es-AR")}</span> `:''}$${payTotal.toLocaleString("es-AR")}</span></div>`:''}
+      <div class="field-row">
+        <label>Nota</label>
+        <textarea placeholder="marca, cantidad, dónde…" oninput="setDesc('${key}', this.value)">${it.desc||''}</textarea>
+      </div>
+      <div class="row-actions">
+        <button class="${it.skipped?'skip-on':''}" onclick="toggleSkip('${key}')">${it.skipped?'✔ No comprar este mes':'✕ No comprar este mes'}</button>
+        <button class="${it.restock?'restock-on':''}" onclick="toggleRestock('${key}')">${it.restock?'🔁 Se repone':'🔁 Reponer'}</button>
+        ${it.custom?`<button class="del-custom" onclick="delCustom('${key}')">Eliminar</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCheck(k){
+  const checks = curWeekObj().checks;
+  if(checks[k]){ delete checks[k]; }
+  else { checks[k]=true; curItems()[k].skipped=false; showUndo(k); }
+  save(); render();
+}
+function toggleSkip(k){
+  const it=curItems()[k]; it.skipped=!it.skipped;
+  if(it.skipped){ delete curWeekObj().checks[k]; }
+  save(); render();
+}
+function toggleRestock(k){ const it=curItems()[k]; it.restock=!it.restock; save(); render(); reopenIfNeeded(k); }
+function toggleOpen(k){ document.getElementById("i-"+k).classList.toggle("open"); }
+function setPrice(k,v){ const it=curItems()[k]; it.price = v==="" ? null : parseFloat(v); save(); render(); reopenIfNeeded(k); }
+function setDisc(k,v){ const it=curItems()[k]; let n = v==="" ? null : parseFloat(v);
+  if(n!=null){ if(isNaN(n)||n<0)n=null; else if(n>100)n=100; } it.disc=n; save(); render(); reopenIfNeeded(k); }
+function setQty(k,v){ const it=curItems()[k]; let n=parseInt(v); if(isNaN(n)||n<1)n=1; it.qty=n; save(); render(); reopenIfNeeded(k); }
+function chgQty(k,d){ const it=curItems()[k]; it.qty=Math.max(1,(it.qty||1)+d); save(); render(); reopenIfNeeded(k); }
+function setDesc(k,v){ curItems()[k].desc = v; save(); }
+function reopenIfNeeded(k){ const el=document.getElementById("i-"+k); if(el && !reorderMode) el.classList.add("open"); }
+
+// Reordenar por góndola: asigna orden secuencial dentro de la sección y mueve
+function moveItem(key, sec, dir){
+  const items = curItems();
+  let rows = Object.keys(items).filter(k=>items[k].sec===sec);
+  rows.sort((a,b)=>{
+    const oa=items[a].order, ob=items[b].order;
+    if(oa!=null && ob!=null && oa!==ob) return oa-ob;
+    if(oa!=null && ob==null) return -1;
+    if(oa==null && ob!=null) return 1;
+    return items[a].name.localeCompare(items[b].name,"es");
+  });
+  const i = rows.indexOf(key);
+  const j = i+dir;
+  if(j<0 || j>=rows.length) return;
+  [rows[i], rows[j]] = [rows[j], rows[i]];
+  rows.forEach((k,idx)=>{ items[k].order = idx; });
+  save(); render();
+}
+
+// Deshacer rápido al tildar
+let undoTimer=null;
+function showUndo(key){
+  const it = curItems()[key];
+  let bar = document.getElementById("undoBar");
+  if(!bar){
+    bar = document.createElement("div");
+    bar.id = "undoBar"; bar.className = "undo-bar";
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `<span>✓ ${it.name}</span><button onclick="undoCheck('${key}')">Deshacer</button>`;
+  bar.classList.add("show");
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(()=>bar.classList.remove("show"), 4000);
+}
+function undoCheck(key){
+  delete curWeekObj().checks[key];
+  const bar=document.getElementById("undoBar"); if(bar) bar.classList.remove("show");
+  save(); render();
+}
+
+function addCustom(sec){
+  const inp = document.getElementById("add-"+sec);
+  const name = inp.value.trim();
+  if(!name) return;
+  const key = sec+"::"+name+"::"+uid();
+  curItems()[key] = { sec, name, custom:true, skipped:false, desc:"", price:null, qty:1, disc:null };
+  inp.value=""; save(); render();
+}
+function delCustom(k){
+  delete curItems()[k];
+  // limpiar el check en todas las semanas
+  const m = curMonthObj();
+  for(const w in m.weeks){ delete m.weeks[w].checks[k]; }
+  save(); render();
+}
+
+// history modal
+function openHist(){
+  const tbl = document.getElementById("histTable");
+  const months = STATE.order;
+  // build union of item keys that have any price
+  const rowKeys = new Set();
+  months.forEach(mk=>{ const it=STATE.months[mk].items; for(const k in it){ if(it[k].price!=null) rowKeys.add(k); } });
+  let head = `<tr><th>Producto</th>`;
+  months.forEach(mk=> head += `<th>${monthLabel(mk)}</th>`);
+  head += `<th>Var. total</th></tr>`;
+  let body = "";
+  const nameOf = k=>{ for(const mk of months){ const it=STATE.months[mk].items[k]; if(it) return it.name; } return k; };
+  const sorted = [...rowKeys].sort((a,b)=>nameOf(a).localeCompare(nameOf(b),"es"));
+  sorted.forEach(k=>{
+    let cells = `<td>${nameOf(k)}</td>`;
+    let firstP=null, lastP=null, prevP=null;
+    months.forEach(mk=>{
+      const p = priceIn(mk,k);
+      if(p==null){ cells+=`<td>—</td>`; return; }
+      let cls="", tag="";
+      if(prevP!=null && prevP>0){
+        const pct=((p-prevP)/prevP)*100;
+        if(Math.abs(pct)>=0.5){ cls=pct>0?"up":"down"; tag=` <small>${pct>0?'▲':'▼'}${Math.abs(pct).toFixed(0)}%</small>`; }
+      }
+      cells+=`<td class="${cls}">$${p.toLocaleString("es-AR")}${tag}</td>`;
+      if(firstP==null) firstP=p;
+      lastP=p; prevP=p;
+    });
+    let totCls="", totTxt="—";
+    if(firstP!=null && lastP!=null && firstP>0 && lastP!==firstP){
+      const pct=((lastP-firstP)/firstP)*100;
+      totCls=pct>0?"up":"down";
+      totTxt=`${pct>0?'+':''}${pct.toFixed(0)}%`;
+    }
+    cells+=`<td class="${totCls}">${totTxt}</td>`;
+    body+=`<tr>${cells}</tr>`;
+  });
+  if(!body){ body = `<tr><td colspan="99" style="text-align:center;color:var(--muted);padding:24px 0;">Todavía no cargaste precios. Ingresá precios en la lista para ver el historial.</td></tr>`; }
+  else {
+    // Fila de índice: inflación de tu canasta comparable mes a mes
+    let idxCells = `<td><b>📈 Tu canasta</b></td>`;
+    months.forEach(mk=>{
+      const infl = basketInflation(mk);
+      if(infl==null){ idxCells += `<td>—</td>`; return; }
+      const cls = infl>0?'up':'down';
+      idxCells += `<td class="${cls}"><b>${infl>0?'+':''}${infl.toFixed(1)}%</b></td>`;
+    });
+    idxCells += `<td>—</td>`;
+    body += `<tr style="border-top:2px solid var(--line);background:var(--hist-row);">${idxCells}</tr>`;
+  }
+  tbl.innerHTML = head+body;
+  document.getElementById("histModal").classList.add("show");
+}
+
+// events
+document.getElementById("monthSel").onchange = e=>{
+  curMonth=e.target.value;
+  curWeek = curMonthObj().weekOrder[curMonthObj().weekOrder.length-1];
+  render();
+};
+document.getElementById("newMonthBtn").onclick = newMonth;
+document.getElementById("weekSel").onchange = e=>{ curWeek=e.target.value; render(); };
+document.getElementById("newWeekBtn").onclick = newWeek;
+document.getElementById("resetBtn").onclick = ()=>{
+  if(confirm("¿Crear un mes nuevo? Copia precios y ajustes del mes actual, arranca con Semana 1 vacía.")) newMonth();
+};
+document.getElementById("search").oninput = e=>{ searchTerm=e.target.value; render(); };
+document.getElementById("filters").onclick = e=>{
+  if(e.target.id==="reorderChip"){
+    reorderMode = !reorderMode;
+    e.target.classList.toggle("active", reorderMode);
+    render();
+    return;
+  }
+  if(!e.target.classList.contains("chip")) return;
+  filter = e.target.dataset.f;
+  document.querySelectorAll(".chip[data-f]").forEach(c=>c.classList.remove("active"));
+  e.target.classList.add("active");
+  render();
+};
+document.getElementById("histBtn").onclick = openHist;
+document.getElementById("histClose").onclick = ()=>document.getElementById("histModal").classList.remove("show");
+document.getElementById("histModal").onclick = e=>{ if(e.target.id==="histModal") e.currentTarget.classList.remove("show"); };
+
+// Tema (preferencia por dispositivo, no sincroniza)
+function applyTheme(dark){
+  document.body.classList.toggle("dark", dark);
+  document.getElementById("themeBtn").textContent = dark ? "☀️" : "🌙";
+}
+(function initTheme(){
+  let dark = false;
+  try { dark = localStorage.getItem("lc_theme")==="dark"; } catch(e){}
+  applyTheme(dark);
+})();
+document.getElementById("themeBtn").onclick = ()=>{
+  const dark = !document.body.classList.contains("dark");
+  applyTheme(dark);
+  try { localStorage.setItem("lc_theme", dark?"dark":"light"); } catch(e){}
+};
+
+load();
+</script>
+</body>
+</html>
